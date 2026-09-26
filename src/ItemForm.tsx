@@ -3,6 +3,7 @@ import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Category, Container, Item, Location, Room, directChildren, localDate, parseDate } from './domain';
 import { Button, Chip, Field, Sheet, colors, s } from './ui';
+import { SpeechInput } from './SpeechInput';
 
 export function ItemForm({ rooms, containers, categories, initialLocation, item, onClose, onSave }: { rooms: Room[]; containers: Container[]; categories: Category[]; initialLocation?: Location; item?: Item; onClose: () => void; onSave: (item: Omit<Item, 'id'>, id?: string) => string | null }) {
   const [name, setName] = useState(item?.name ?? ''); const [categoryId, setCategoryId] = useState(item?.categoryId ?? 'uncategorized');
@@ -31,7 +32,7 @@ export function ItemForm({ rooms, containers, categories, initialLocation, item,
   const parentId = selected?.level === 3 ? selected.parentId : selected?.id;
   const children = place && parentId ? directChildren(containers, place.roomId, parentId) : [];
   return <Sheet title={item ? '编辑物品' : '记录物品'} onClose={onClose}>
-    <Field label="物品名称" value={name} onChangeText={setName} />
+    <Field label="物品名称" value={name} onChangeText={setName} /><SpeechInput onApply={setName} />
     <Text style={s.label}>房间</Text><View style={s.wrap}>{rooms.map(room => <Chip key={room.id} label={room.name} tone="room" selected={place?.roomId === room.id} onPress={() => setPlace({ roomId: room.id })} />)}</View>
     {place && <><Text style={[s.label, { marginVertical: 10 }]}>存放位置</Text><View style={s.wrap}><Chip label="直接放在房间" tone="neutral" selected={!place.containerId} onPress={() => setPlace({ roomId: place.roomId })} />{moduleOptions.map(c => <Chip key={c.id} label={c.name} tone="module" selected={parentId === c.id} onPress={() => setPlace({ roomId: place.roomId, containerId: c.id })} />)}</View>{!!children.length && <View style={[s.wrap, { marginTop: 8 }]}>{children.map(c => <Chip key={c.id} label={c.name} tone="submodule" selected={place.containerId === c.id} onPress={() => setPlace({ roomId: place.roomId, containerId: c.id })} />)}</View>}</>}
     <Text style={[s.label, { marginVertical: 10 }]}>分类标签</Text><View style={s.wrap}>{categories.map(c => <Chip key={c.id} label={c.name} selected={categoryId === c.id} onPress={() => setCategoryId(c.id)} />)}</View>

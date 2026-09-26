@@ -14,6 +14,7 @@
       "**/*"
     ],
     "plugins": [
+      ["expo-audio", { "microphonePermission": "允许家里放哪儿录音，用于语音填写物品名称。" }],
       "expo-notifications",
       "@react-native-community/datetimepicker"
     ],
