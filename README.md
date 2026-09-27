@@ -67,9 +67,26 @@
 本仓库已经包含 `wardrobe_local_tool` 衣柜服务端，不需要另行下载或手动创建后端文件夹。先在项目根目录打开 PowerShell，执行：
 
 ```powershell
-Set-Location "项目目录"
 powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
+
+如果当前 PowerShell 显示的路径不是项目目录，请先切换到项目实际所在的位置。不要直接输入“项目目录”；那只是文档中的占位说明。最简单的做法是在资源管理器中打开项目文件夹 `整理箱`，点击地址栏，输入 `powershell` 并回车。新窗口中的路径应当以项目目录结尾，然后执行上面的命令。
+
+也可以使用完整路径切换目录。请把下面的路径替换成你电脑上实际的项目路径：
+
+```powershell
+Set-Location "C:\Users\你的用户名\Documents\ChatGPT\整理箱"
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+执行前可以用下面的命令确认当前位置和脚本是否存在：
+
+```powershell
+Get-Location
+Test-Path .\setup.ps1
+```
+
+第二条命令返回 `True` 后，再运行配置命令。
 
 脚本会自动安装前端依赖、创建 `wardrobe_local_tool\.venv`、安装 Python 依赖，并准备 `wardrobe_local_tool\.env`。执行过程中会安全地询问 DeepSeek API Key，输入内容不会显示。
 
