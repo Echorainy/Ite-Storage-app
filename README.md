@@ -62,89 +62,44 @@
 3. 复制生成的 Key。Key 通常只会完整显示一次，请立即保存到密码管理器。
 4. 根据平台要求完成充值或设置余额/用量限制，确保服务端有可用额度。
 
-#### 2. 准备衣柜服务端
+#### 2. 使用 PowerShell 一键配置本地服务
 
-这里的“服务端项目”指一个**单独运行的后端程序**，不是当前的 Expo 客户端项目。当前仓库中的 `src/WardrobePage.tsx` 只负责发起请求，不能安全地直接保存 DeepSeek API Key；后端负责保存密钥、调用 DeepSeek，再把结果返回给 App。
-
-当前客户端会请求以下地址：
-
-```text
-http://localhost:8000/api/chat
-```
-
-因此你需要先获得一个提供 `/api/chat` 的衣柜后端项目，并让它在本机的 8000 端口运行。后端项目可以来自你自己的服务、单独的 API 服务仓库，或团队提供的衣柜服务；它至少需要实现本 README 后面列出的接口。本仓库本身不包含这个后端，也不会自动创建 `/api/chat` 服务。
-
-建议把两个项目放在同一个父目录中，便于区分：
-
-```text
-MeRoom/
-  └─        # 当前 Expo 客户端项目
-wardrobe-server/
-  └─        # 单独的衣柜后端项目，负责调用 DeepSeek
-```
-
-先进入后端项目目录，而不是当前 MeRoom 目录：
+本仓库已经包含 `wardrobe_local_tool` 衣柜服务端，不需要另行下载或手动创建后端文件夹。先在项目根目录打开 PowerShell，执行：
 
 ```powershell
-Set-Location .\wardrobe-server
+Set-Location "项目目录"
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
-#### 3. 在后端项目中创建 `.env` 文件
+脚本会自动安装前端依赖、创建 `wardrobe_local_tool\.venv`、安装 Python 依赖，并准备 `wardrobe_local_tool\.env`。执行过程中会安全地询问 DeepSeek API Key，输入内容不会显示。
 
-在 `wardrobe-server` 后端项目的**根目录**创建名为 `.env` 的纯文本文件。它应与后端的 `package.json`、`requirements.txt` 或后端启动文件处于同一级目录。例如：
+脚本使用后端实际读取的变量名：
 
-```text
-wardrobe-server/
-  .env                 # 在这里配置 DeepSeek 密钥
-  package.json         # 或 requirements.txt
-  server.*             # 后端启动文件
+```dotenv
+OPENAI_API_KEY=你的 DeepSeek API Key
+OPENAI_BASE_URL=https://api.deepseek.com
+CHAT_MODEL=deepseek-chat
+VISION_MODEL=deepseek-flash
 ```
 
-在 Windows PowerShell 中可以这样创建并打开文件：
+API Key 会保存到 `wardrobe_local_tool\.env`，不会写入 Expo 客户端。重复执行 `setup.ps1` 时，如果已经存在有效 Key，脚本会保留现有配置，不会覆盖。
+
+#### 3. 启动本地服务
+
+配置完成后，继续在项目根目录执行：
 
 ```powershell
-New-Item -ItemType File -Path .env -Force
-notepad .env
+.\start-all.ps1
 ```
 
-在打开的 `.env` 文件中写入以下内容，每一行一个变量：
+该命令会启动衣柜 API（默认 `http://localhost:8000`）和 MeRoom Web 客户端（默认 `http://localhost:8091`）。也可以分别启动：
 
 ```powershell
-DEEPSEEK_API_KEY=sk-替换为你的真实密钥
+powershell -ExecutionPolicy Bypass -File .\wardrobe_local_tool\start_web.ps1 -Port 8000
+pnpm web -- --port 8091
 ```
 
-这里的 `sk-替换为你的真实密钥` 只是占位文字，必须替换成你在 DeepSeek 平台复制的完整 Key，等号两边不要加空格，也不要把 Key 放在引号中。例如：
-
-```powershell
-DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
-DEEPSEEK_MODEL=deepseek-chat
-```
-
-回到后端项目的安装说明，安装依赖并启动后端。不同后端项目的命令可能不同，常见形式如下：
-
-```powershell
-# 以 Node.js 后端为例
-pnpm install
-pnpm dev
-```
-
-或：
-
-```powershell
-# 以 Python 后端为例，具体命令以服务端项目说明为准
-pip install -r requirements.txt
-python server.py
-```
-
-启动成功后，后端应监听 `http://localhost:8000`。保持这个 PowerShell 窗口运行，再打开另一个 PowerShell 窗口启动 MeRoom 客户端。
-
-如果服务端支持指定模型，可以同时加入：
-
-```powershell
-DEEPSEEK_MODEL=deepseek-chat
-```
-
-保存后，后端程序启动时会从这个文件读取密钥。`.env` 文件只供服务端读取，应加入后端项目的 `.gitignore`：
+`.env` 文件只供服务端读取，应加入后端项目的 `.gitignore`：
 
 ```gitignore
 .env
@@ -154,9 +109,11 @@ DEEPSEEK_MODEL=deepseek-chat
 
 可以提交不含真实密钥的模板文件 `.env.example`：
 
-```powershell
-DEEPSEEK_API_KEY=
-DEEPSEEK_MODEL=deepseek-chat
+```dotenv
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.deepseek.com
+CHAT_MODEL=deepseek-chat
+VISION_MODEL=deepseek-flash
 ```
 
 不要在日志、错误页面、截图、提交记录或前端返回值中打印完整 API Key。
@@ -169,7 +126,7 @@ DEEPSEEK_MODEL=deepseek-chat
 EXPO_PUBLIC_WARDROBE_API_URL=http://localhost:8000
 ```
 
-`EXPO_PUBLIC_` 变量会被打包进客户端，只能放服务端地址等公开信息，不能放 `DEEPSEEK_API_KEY`。修改后重启 Expo：
+`EXPO_PUBLIC_` 变量会被打包进客户端，只能放服务端地址等公开信息，不能放 `OPENAI_API_KEY` 或任何 DeepSeek 密钥。修改后重启 Expo：
 
 ```powershell
 pnpm start
@@ -193,7 +150,7 @@ EXPO_PUBLIC_WARDROBE_API_URL=http://192.168.1.100:8000
 | `GET /api/weather?days=1&latitude=<纬度>&longitude=<经度>` | 获取天气 |
 | `POST /api/analyze` | 上传衣物图片并请求识别 |
 
-其中 `/api/chat` 应在服务端完成以下流程：读取 `DEEPSEEK_API_KEY`，向 DeepSeek API 发起请求，把天气和衣物清单转为提示词，并向客户端返回：
+其中 `/api/chat` 应在服务端完成以下流程：读取 `OPENAI_API_KEY`，向 DeepSeek API 发起请求，把天气和衣物清单转为提示词，并向客户端返回：
 
 ```json
 { "answer": "今天建议穿……" }
@@ -219,7 +176,7 @@ Invoke-RestMethod `
   -Body $body
 ```
 
-如果返回包含 `answer` 的 JSON，说明客户端和服务端接口已连通。若页面提示“DeepSeek 服务暂不可用”，依次检查服务端是否启动、`DEEPSEEK_API_KEY` 是否加载、账户余额是否可用、前端 URL 是否正确，以及手机是否能访问电脑 IP。
+如果返回包含 `answer` 的 JSON，说明客户端和服务端接口已连通。若页面提示“DeepSeek 服务暂不可用”，依次检查服务端是否启动、`OPENAI_API_KEY` 是否加载、账户余额是否可用、前端 URL 是否正确，以及手机是否能访问电脑 IP。
 
 #### 7. 常见安全要求
 
