@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AppState, Image, ImageSourcePropType, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, AppState, Easing, Image, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LOCATION_TONES, LocationTone, localDate } from './domain';
 export type IconName = React.ComponentProps<typeof Feather>['name'];
@@ -13,8 +13,49 @@ export function Icon({ name, color = colors.ink }: { name: IconName; color?: str
 export function IconButton({ name, label, onPress }: { name: IconName; label: string; onPress: () => void }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={s.iconButton}><Icon name={name} /></Pressable>;
 }
-export function Button({ title, onPress, secondary = false, icon, disabled = false }: { title: string; onPress: () => void; secondary?: boolean; icon?: IconName; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={title} disabled={disabled} onPress={onPress} style={[s.button, secondary && s.secondary, disabled && { opacity: .4 }]}>{icon && <Icon name={icon} color={secondary ? colors.accent : '#FFF'} />}<Text style={[s.buttonText, secondary && { color: colors.accent }]}>{title}</Text></Pressable>;
+// Four-circle motion adapted from Uiverse.io by AbanoubMagdy1.
+function ButtonLoader({ color }: { color: string }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = useState(true);
+  useEffect(() => {
+    let active = true;
+    let preferenceChanged = false;
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', value => {
+      preferenceChanged = true;
+      setReduceMotion(value);
+    });
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => {
+      if (active && !preferenceChanged) setReduceMotion(value);
+    }).catch(() => { /* Keep static dots when the preference is unavailable. */ });
+    return () => { active = false; subscription.remove(); };
+  }, []);
+  useEffect(() => {
+    progress.setValue(0);
+    if (reduceMotion) return;
+    const animation = Animated.loop(Animated.timing(progress, {
+      toValue: 1, duration: 2000, easing: Easing.linear,
+      useNativeDriver: Platform.OS !== 'web', isInteraction: false,
+    }));
+    animation.start();
+    return () => animation.stop();
+  }, [progress, reduceMotion]);
+  const inputRange = [0, .2, .25, .45, .5, .7, .75, .95, 1];
+  return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden style={[StyleSheet.absoluteFill, { pointerEvents: 'none', alignItems: 'center', justifyContent: 'center' }]}>
+    <Animated.View testID="button-loader" style={{ width: 20, height: 20, transform: [
+      { scale: progress.interpolate({ inputRange, outputRange: [1, 1.3, 1.3, 1, 1, 1.3, 1.3, 1, 1] }) },
+      { rotate: progress.interpolate({ inputRange, outputRange: ['0deg', '90deg', '90deg', '180deg', '180deg', '270deg', '270deg', '360deg', '360deg'] }) },
+    ] }}>
+      {[0, 1, 2, 3].map(index => <View key={index} style={{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: color, top: index < 2 ? 0 : 12, left: index % 2 === 0 ? 0 : 12 }} />)}
+    </Animated.View>
+  </View>;
+}
+export function Button({ title, onPress, secondary = false, icon, disabled = false, loading = false }: { title: string; onPress: () => void; secondary?: boolean; icon?: IconName; disabled?: boolean; loading?: boolean }) {
+  const blocked = disabled || loading;
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: blocked, busy: loading }} aria-busy={loading} disabled={blocked} onPress={onPress} style={[s.button, secondary && s.secondary, disabled && !loading && { opacity: .4 }]}>
+    {icon && <View style={loading && { opacity: 0 }} aria-hidden><Icon name={icon} color={secondary ? colors.accent : '#FFF'} /></View>}
+    <Text style={[s.buttonText, secondary && { color: colors.accent }, loading && { opacity: 0 }]}>{title}</Text>
+    {loading && <ButtonLoader color={secondary ? colors.accent : colors.surface} />}
+  </Pressable>;
 }
 export function Chip({ label, selected, onPress, tone }: { label: string; selected: boolean; onPress: () => void; tone?: LocationTone }) {
   const palette = tone ? LOCATION_TONES[tone] : undefined;
