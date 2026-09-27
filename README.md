@@ -7,6 +7,7 @@
 ### 家庭与空间管理
 
 - 创建、切换和重命名多个家庭。
+- 支持删除整个家庭；删除时会级联移除该家庭的房间、收纳模块和物品，并取消相关到期提醒。
 - 为每个家庭创建房间，例如厨房、卧室、主卧衣柜或储物间。
 - 在房间中创建两级收纳模块，例如橱柜、抽屉、挂衣区和收纳盒。
 - 为模块设置颜色，并用 8×8 网格记录模块占用的空间。
@@ -49,6 +50,183 @@
 智能衣柜的天气、图片识别、JSON 导入和 AI 建议依赖项目配置的服务地址，默认地址为 `http://localhost:8000`，可通过 `EXPO_PUBLIC_WARDROBE_API_URL` 修改。移动端页面支持衣物档案和位置管理；图片上传、JSON 导入和浏览器定位天气目前仅在网页端开放。
 
 衣物改造示例入口目前用于展示示例，实际改造功能尚未完成。
+
+### DeepSeek API Key 配置
+
+智能衣柜的“今日 AI 穿搭建议”需要一个服务端来调用 DeepSeek。请先在 DeepSeek 开放平台创建 API Key，再把密钥配置到衣柜服务端；不要把密钥写入 `App.tsx`、`src/WardrobePage.tsx`、Expo 客户端代码或提交到 Git。
+
+#### 1. 创建 DeepSeek API Key
+
+1. 打开 [DeepSeek 开放平台](https://platform.deepseek.com/) 并登录账号。
+2. 进入 API Keys 页面，点击创建新 Key。
+3. 复制生成的 Key。Key 通常只会完整显示一次，请立即保存到密码管理器。
+4. 根据平台要求完成充值或设置余额/用量限制，确保服务端有可用额度。
+
+#### 2. 准备衣柜服务端
+
+这里的“服务端项目”指一个**单独运行的后端程序**，不是当前的 Expo 客户端项目。当前仓库中的 `src/WardrobePage.tsx` 只负责发起请求，不能安全地直接保存 DeepSeek API Key；后端负责保存密钥、调用 DeepSeek，再把结果返回给 App。
+
+当前客户端会请求以下地址：
+
+```text
+http://localhost:8000/api/chat
+```
+
+因此你需要先获得一个提供 `/api/chat` 的衣柜后端项目，并让它在本机的 8000 端口运行。后端项目可以来自你自己的服务、单独的 API 服务仓库，或团队提供的衣柜服务；它至少需要实现本 README 后面列出的接口。本仓库本身不包含这个后端，也不会自动创建 `/api/chat` 服务。
+
+建议把两个项目放在同一个父目录中，便于区分：
+
+```text
+MeRoom/
+  └─        # 当前 Expo 客户端项目
+wardrobe-server/
+  └─        # 单独的衣柜后端项目，负责调用 DeepSeek
+```
+
+先进入后端项目目录，而不是当前 MeRoom 目录：
+
+```powershell
+Set-Location .\wardrobe-server
+```
+
+#### 3. 在后端项目中创建 `.env` 文件
+
+在 `wardrobe-server` 后端项目的**根目录**创建名为 `.env` 的纯文本文件。它应与后端的 `package.json`、`requirements.txt` 或后端启动文件处于同一级目录。例如：
+
+```text
+wardrobe-server/
+  .env                 # 在这里配置 DeepSeek 密钥
+  package.json         # 或 requirements.txt
+  server.*             # 后端启动文件
+```
+
+在 Windows PowerShell 中可以这样创建并打开文件：
+
+```powershell
+New-Item -ItemType File -Path .env -Force
+notepad .env
+```
+
+在打开的 `.env` 文件中写入以下内容，每一行一个变量：
+
+```powershell
+DEEPSEEK_API_KEY=sk-替换为你的真实密钥
+```
+
+这里的 `sk-替换为你的真实密钥` 只是占位文字，必须替换成你在 DeepSeek 平台复制的完整 Key，等号两边不要加空格，也不要把 Key 放在引号中。例如：
+
+```powershell
+DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+回到后端项目的安装说明，安装依赖并启动后端。不同后端项目的命令可能不同，常见形式如下：
+
+```powershell
+# 以 Node.js 后端为例
+pnpm install
+pnpm dev
+```
+
+或：
+
+```powershell
+# 以 Python 后端为例，具体命令以服务端项目说明为准
+pip install -r requirements.txt
+python server.py
+```
+
+启动成功后，后端应监听 `http://localhost:8000`。保持这个 PowerShell 窗口运行，再打开另一个 PowerShell 窗口启动 MeRoom 客户端。
+
+如果服务端支持指定模型，可以同时加入：
+
+```powershell
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+保存后，后端程序启动时会从这个文件读取密钥。`.env` 文件只供服务端读取，应加入后端项目的 `.gitignore`：
+
+```gitignore
+.env
+.env.*
+!.env.example
+```
+
+可以提交不含真实密钥的模板文件 `.env.example`：
+
+```powershell
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+不要在日志、错误页面、截图、提交记录或前端返回值中打印完整 API Key。
+
+#### 4. 配置前端访问地址
+
+在本项目根目录创建 `.env.local`：
+
+```powershell
+EXPO_PUBLIC_WARDROBE_API_URL=http://localhost:8000
+```
+
+`EXPO_PUBLIC_` 变量会被打包进客户端，只能放服务端地址等公开信息，不能放 `DEEPSEEK_API_KEY`。修改后重启 Expo：
+
+```powershell
+pnpm start
+```
+
+如果手机访问电脑上的服务端，`localhost` 指的是手机本身，需要改成电脑在局域网中的 IP，例如：
+
+```powershell
+EXPO_PUBLIC_WARDROBE_API_URL=http://192.168.1.100:8000
+```
+
+同时确保服务端监听局域网地址（例如 `0.0.0.0`）、电脑防火墙允许该端口，并让手机和电脑连接同一网络。部署到线上时，将它改成 HTTPS 服务地址，例如 `https://wardrobe.example.com`。
+
+#### 5. 确认服务端接口
+
+衣柜页面会请求：
+
+| 请求 | 用途 |
+| --- | --- |
+| `POST /api/chat` | 调用 DeepSeek 生成今日穿搭建议 |
+| `GET /api/weather?days=1&latitude=<纬度>&longitude=<经度>` | 获取天气 |
+| `POST /api/analyze` | 上传衣物图片并请求识别 |
+
+其中 `/api/chat` 应在服务端完成以下流程：读取 `DEEPSEEK_API_KEY`，向 DeepSeek API 发起请求，把天气和衣物清单转为提示词，并向客户端返回：
+
+```json
+{ "answer": "今天建议穿……" }
+```
+
+客户端发送的 JSON 至少包含 `message`、`wardrobe` 和 `weather`。DeepSeek 请求失败时，客户端会退回本地规则建议。
+
+#### 6. 验证配置
+
+服务端启动后，先用浏览器或命令行确认地址可访问，再打开应用的“智能衣柜”页面并点击“生成今日建议”。例如检查聊天接口是否连通：
+
+```powershell
+$body = @{
+  message = '只返回一句测试回复'
+  wardrobe = @()
+  weather = $null
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://localhost:8000/api/chat' `
+  -ContentType 'application/json' `
+  -Body $body
+```
+
+如果返回包含 `answer` 的 JSON，说明客户端和服务端接口已连通。若页面提示“DeepSeek 服务暂不可用”，依次检查服务端是否启动、`DEEPSEEK_API_KEY` 是否加载、账户余额是否可用、前端 URL 是否正确，以及手机是否能访问电脑 IP。
+
+#### 7. 常见安全要求
+
+- API Key 只放在服务端环境变量中，不放在 `EXPO_PUBLIC_*` 变量中。
+- 不要把 API Key 直接写入 README、源码、JSON 衣物文件或测试数据。
+- 如果 Key 泄露，立即在 DeepSeek 平台撤销并重新创建，然后重启服务端。
+- 生产环境使用 HTTPS，并在服务端限制请求频率和错误信息，避免把上游密钥或完整响应暴露给客户端。
 ## 技术栈
 
 - Expo 57
@@ -68,14 +246,14 @@
 
 ## 安装与启动
 
-```bash
+```powershell
 pnpm install
 pnpm start
 ```
 
 也可以直接启动目标平台：
 
-```bash
+```powershell
 pnpm android   # Android
 pnpm ios       # iOS，需要 macOS + Xcode
 pnpm web       # 浏览器
@@ -90,7 +268,7 @@ pnpm web       # 浏览器
 1. 安装 Android Studio 并启动一个模拟器。
 2. 在项目目录执行：
 
-   ```bash
+   ```powershell
    pnpm install
    pnpm android
    ```
@@ -107,14 +285,14 @@ pnpm web       # 浏览器
 
 项目已经配置 EAS 内部测试构建：
 
-```bash
+```powershell
 npx eas login
 npx eas build --profile preview --platform android
 ```
 
 `preview` 会生成可安装的 APK。正式发布包使用：
 
-```bash
+```powershell
 npx eas build --profile production --platform android
 ```
 
@@ -125,7 +303,7 @@ npx eas build --profile production --platform android
 1. 在 macOS 安装 Xcode 并启动 iPhone 模拟器。
 2. 在项目目录执行：
 
-   ```bash
+   ```powershell
    pnpm install
    pnpm ios
    ```
@@ -146,7 +324,7 @@ npx eas build --profile production --platform android
 
 ## 开发与验证
 
-```bash
+```powershell
 pnpm typecheck
 pnpm test
 pnpm exec expo export --platform android --platform web
@@ -154,7 +332,7 @@ pnpm exec expo export --platform android --platform web
 
 运行浏览器 UI 测试：
 
-```bash
+```powershell
 pnpm exec expo start --web --port 8083
 pnpm exec playwright install chromium
 pnpm test:ui
@@ -175,4 +353,4 @@ pnpm test:ui
 
 - 目前是本地单设备应用，没有云端账户和同步功能。
 - Expo Go 中不启用系统通知，需要独立开发版或正式构建才能完整验证通知。
-- 暂不支持删除整个家庭和跨家庭移动物品。衣物改造功能仍在开发中。
+- 暂不支持跨家庭移动物品。衣物改造功能仍在开发中。

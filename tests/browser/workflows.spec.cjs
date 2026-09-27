@@ -70,6 +70,34 @@ test('multiple homes, global search, scoped navigation and empty last room', asy
   expect(errors).toEqual([]);
 });
 
+test('deleting a home cascades its rooms, modules, items, and protects the last home', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '选择家庭' }).click();
+  await page.getByRole('button', { name: '新建家', exact: true }).click();
+  await page.getByRole('textbox', { name: '名称', exact: true }).fill('待删除家');
+  await page.getByRole('button', { name: '保存名称' }).click();
+  await page.getByRole('button', { name: '记录物品', exact: true }).click();
+  await page.getByRole('textbox', { name: '名称', exact: true }).fill('储物间');
+  await page.getByRole('button', { name: '保存名称' }).click();
+  await page.getByRole('button', { name: '打开房间 储物间', exact: true }).click();
+  await page.getByRole('button', { name: '新增模块', exact: true }).click();
+  await page.getByRole('textbox', { name: '名称', exact: true }).fill('储物柜');
+  await page.getByRole('button', { name: '保存模块', exact: true }).click();
+  await page.getByRole('button', { name: '在此位置记录物品', exact: true }).click();
+  await page.getByRole('textbox', { name: '物品名称', exact: true }).fill('待删除物品');
+  await page.getByRole('button', { name: '保存物品', exact: true }).click();
+  await page.getByRole('tab', { name: '设置', exact: true }).click();
+  await page.getByRole('button', { name: '删除家庭 待删除家', exact: true }).click();
+  await expect(page.getByText('将删除 1 个房间、1 个模块和 1 件物品，删除后无法恢复。', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByRole('button', { name: '删除家庭 待删除家', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '删除家庭 待删除家', exact: true }).click();
+  await page.getByRole('button', { name: '确认删除', exact: true }).click();
+  await expect(page.getByRole('button', { name: '删除家庭 待删除家', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '切换到 我的家', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '删除家庭 我的家', exact: true })).toHaveCount(0);
+});
+
 test('today expiry becomes expired across midnight without a reload', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-09-24T23:58:00') });
   await page.goto('/');
