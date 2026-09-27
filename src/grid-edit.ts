@@ -1,13 +1,13 @@
-import type { Container, Item } from './domain';
+import type { Container, Item, RoomLayout } from './domain';
 
-export function cellAt(x: number, y: number, width: number): number | null {
-  if (![x, y, width].every(Number.isFinite) || width <= 0 || x < 0 || y < 0 || x >= width || y >= width) return null;
-  return Math.floor(y * 8 / width) * 8 + Math.floor(x * 8 / width);
+export function cellAt(x: number, y: number, width: number, rows = 8, cols = 8): number | null {
+  if (![x, y, width, rows, cols].every(Number.isFinite) || width <= 0 || rows < 1 || cols < 1 || x < 0 || y < 0 || x >= width || y >= width) return null;
+  return Math.floor(y * rows / width) * cols + Math.floor(x * cols / width);
 }
 
-export function cellAtLocal(x: number, y: number, width: number, height = width): number | null {
-  if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0 || x < 0 || y < 0 || x >= width || y >= height) return null;
-  return Math.floor(y * 8 / height) * 8 + Math.floor(x * 8 / width);
+export function cellAtLocal(x: number, y: number, width: number, height = width, rows = 8, cols = 8): number | null {
+  if (![x, y, width, height, rows, cols].every(Number.isFinite) || width <= 0 || height <= 0 || rows < 1 || cols < 1 || x < 0 || y < 0 || x >= width || y >= height) return null;
+  return Math.floor(y * rows / height) * cols + Math.floor(x * cols / width);
 }
 export const cellFromGesture = cellAtLocal;
 
@@ -31,11 +31,14 @@ export function occupiedCellsForContainer(id: string, containers: Container[], i
   return target ? occupiedCells(target.roomId, target.parentId, containers, items, target.id) : new Set<number>();
 }
 
-export function validateCells(id: string, cells: number[], containers: Container[], items: Item[]): string | null {
+export function validateCells(id: string, cells: number[], containers: Container[], items: Item[], rows: number | RoomLayout = 8, cols = 8): string | null {
   const target = containers.find(c => c.id === id);
   if (!target) return '模块不存在';
   if (!cells.length) return '请至少选择一个格子';
-  if (cells.some(c => !Number.isInteger(c) || c < 0 || c > 63)) return '格子编号无效';
+  const rowCount = typeof rows === 'number' ? rows : rows.rows;
+  const colCount = typeof rows === 'number' ? cols : rows.cols;
+  const total = rowCount * colCount;
+  if (![rowCount, colCount].every(Number.isInteger) || rowCount < 1 || colCount < 1 || cells.some(c => !Number.isInteger(c) || c < 0 || c >= total)) return '格子编号无效';
   const blocked = occupiedCellsForContainer(id, containers, items);
   return cells.some(c => blocked.has(c)) ? '格子已被其他模块或物品占用' : null;
 }

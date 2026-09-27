@@ -102,3 +102,12 @@ test('category filters combine with expiry filters', () => {
   assert.deepEqual(filterItems(sample, 'week', 'drink', now).map(i => i.id), ['a', 'b']);
   assert.deepEqual(filterItems(sample, 'expired', undefined, now).map(i => i.id), ['c']);
 });
+
+
+test('unplaced clothes belong to their home and are removed only with that home', () => {
+  const rooms = [{id:'r',homeId:'a',name:'卧室'}];
+  const items = [{id:'shirt',homeId:'a',categoryId:'clothing',name:'衬衫'}, {id:'coat',homeId:'b',categoryId:'clothing',name:'外套'}];
+  assert.deepEqual(homeItems(items, rooms, 'a'), [items[0]]);
+  const data = {homes:[{id:'a'},{id:'b'}],rooms,containers:[],items};
+  assert.deepEqual(removeHomeContents(data,'a').items, [items[1]]);
+});

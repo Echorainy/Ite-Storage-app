@@ -24,7 +24,7 @@ export function Field({ label, value, onChangeText, placeholder, numeric = false
   return <View style={s.field}><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={s.input} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#81918A" keyboardType={numeric ? 'number-pad' : 'default'} /></View>;
 }
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return <Modal visible transparent animationType="fade" onRequestClose={onClose}><View style={s.backdrop}><View style={s.sheet} accessibilityViewIsModal><View style={s.headingRow}><Text style={s.h2}>{title}</Text><IconButton name="x" label="关闭弹窗" onPress={onClose} /></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>{children}</ScrollView></View></View></Modal>;
+  return <Modal visible transparent animationType="fade" onRequestClose={onClose}><View style={s.backdrop}><View style={s.sheet} role="dialog" accessibilityLabel={title} accessibilityViewIsModal><View style={s.headingRow}><Text style={s.h2}>{title}</Text><IconButton name="x" label="关闭弹窗" onPress={onClose} /></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>{children}</ScrollView></View></View></Modal>;
 }
 export function Empty({ text }: { text: string }) { return <View style={s.empty}><Mascot source={require('../assets/cat-mascot-resting.png')} size={96} /><Text style={s.emptyTitle}>这里还空着</Text><Text style={s.muted}>{text}</Text></View>; }
 export function Mascot({ source, size = 96 }: { source?: ImageSourcePropType; size?: number }) {

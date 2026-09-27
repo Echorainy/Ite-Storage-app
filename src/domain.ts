@@ -1,9 +1,41 @@
 export type Home = { id: string; name: string; greeting?: string; note?: string };
 export const DEFAULT_HOME_GREETING = '今天也要把家照顾好';
 export const DEFAULT_HOME_NOTE = '喵今天好好收纳了吗';
-export type Room = { id: string; homeId: string; name: string; layout: { rows: 8; cols: 8 } };
-export type Container = { id: string; name: string; roomId: string; parentId?: string; level: 2 | 3; cells: number[]; color?: string };
-export type Item = { id: string; name: string; roomId: string; containerId?: string; categoryId: string; cell?: number; expiry?: string; reminderDays: number };
+/** Dimensions of a room's editable grid. 8x8 is the smallest supported grid. */
+export type RoomLayout = { rows: number; cols: number };
+export type RoomKind = 'room' | 'walk-in-closet';
+export type Room = { id: string; homeId: string; name: string; layout: RoomLayout; kind?: RoomKind; mapPosition?: { x: number; y: number } };
+
+/** Common room sizes offered by the quick picker when creating a room. */
+export const ROOM_LAYOUT_PRESETS: ReadonlyArray<RoomLayout & { label: string }> = [
+  { rows: 8, cols: 8, label: '8×8' },
+  { rows: 10, cols: 8, label: '10×8' },
+  { rows: 12, cols: 8, label: '12×8' },
+  { rows: 12, cols: 10, label: '12×10' },
+  { rows: 14, cols: 12, label: '14×12' },
+  { rows: 16, cols: 16, label: '16×16' },
+];
+
+/** Keep custom values in the range that remains usable on a phone screen. */
+export function normalizeRoomLayout(layout?: Partial<RoomLayout> | null, minimum = 8): RoomLayout {
+  const rows = Number.isFinite(layout?.rows) ? Math.round(layout!.rows as number) : 8;
+  const cols = Number.isFinite(layout?.cols) ? Math.round(layout!.cols as number) : 8;
+  return { rows: Math.min(16, Math.max(minimum, rows)), cols: Math.min(16, Math.max(minimum, cols)) };
+}
+export function roomCellCount(layout?: Partial<RoomLayout> | null) {
+  const { rows, cols } = normalizeRoomLayout(layout, 6);
+  return rows * cols;
+}
+export type ContainerKind = 'module' | 'smart-wardrobe';
+export type Container = { id: string; name: string; roomId: string; parentId?: string; level: 2 | 3; cells: number[]; color?: string; kind?: ContainerKind };
+export const CLOTHING_CATEGORY_ID = 'clothing';
+export type ClothingDetails = { type?: string; color?: string; material?: string; season?: string; image?: string };
+export type ClothingDraft = ClothingDetails & { name: string; roomId?: string; containerId?: string };
+export type Item = ClothingDetails & { id: string; name: string; homeId: string; roomId?: string; containerId?: string; categoryId: string; cell?: number; expiry?: string; reminderDays: number };
+export type WardrobeItem = Item & { type: string; color: string; season: string };
+export function wardrobeItems(items: Item[]): WardrobeItem[] {
+  return items.filter(item => item.categoryId === CLOTHING_CATEGORY_ID).map(item => ({ ...item, type: item.type || '未设置', color: item.color || '未设置', season: item.season || '未设置' }));
+}
 export type Category = { id: string; name: string; isSystem: boolean };
 export type Location = { roomId: string; containerId?: string };
 export type LocationTone = 'neutral' | 'room' | 'module' | 'submodule';
@@ -53,7 +85,7 @@ export function statistics(items: Item[], now = new Date()): Record<Filter, numb
 }
 export function homeItems(items: Item[], rooms: Room[], homeId: string) {
   const ids = new Set(rooms.filter(r => r.homeId === homeId).map(r => r.id));
-  return items.filter(i => ids.has(i.roomId));
+  return items.filter(i => i.homeId ? i.homeId === homeId : !!i.roomId && ids.has(i.roomId));
 }
 export function directChildren(containers: Container[], roomId: string, containerId?: string) {
   return containers.filter(c => c.roomId === roomId && c.parentId === containerId);
@@ -86,14 +118,14 @@ export function matchesCategory(item: Pick<Item, 'categoryId'>, categoryId?: str
 export function filterItems<T extends Pick<Item, 'categoryId'> & { expiry?: string }>(items: T[], filter: Filter, categoryId?: string, now = new Date()) {
   return items.filter(item => matchesCategory(item, categoryId) && matchesFilter(item as unknown as Item, filter, now));
 }
-export function removeHomeContents<T extends { id: string }, R extends { id: string; homeId: string }, C extends { id: string; roomId: string }, I extends { id: string; roomId: string }>(data: { homes: T[]; rooms: R[]; containers: C[]; items: I[] }, homeId: string, requireRemaining = false) {
+export function removeHomeContents<T extends { id: string }, R extends { id: string; homeId: string }, C extends { id: string; roomId: string }, I extends { id: string; roomId?: string; homeId?: string }>(data: { homes: T[]; rooms: R[]; containers: C[]; items: I[] }, homeId: string, requireRemaining = false) {
   if (requireRemaining && data.homes.length <= 1) return { error: '至少保留一个家' } as const;
   const roomIds = new Set(data.rooms.filter(room => room.homeId === homeId).map(room => room.id));
-  return { homes: data.homes.filter(home => home.id !== homeId), rooms: data.rooms.filter(room => room.homeId !== homeId), containers: data.containers.filter(container => !roomIds.has(container.roomId)), items: data.items.filter(item => !roomIds.has(item.roomId)) };
+  return { homes: data.homes.filter(home => home.id !== homeId), rooms: data.rooms.filter(room => room.homeId !== homeId), containers: data.containers.filter(container => !roomIds.has(container.roomId)), items: data.items.filter(item => item.homeId !== homeId && (!item.roomId || !roomIds.has(item.roomId))) };
 }
-export function locationPath(roomId: string, containerId: string | undefined, homes: Home[], rooms: Room[], containers: Container[]) {
+export function locationPath(roomId: string | undefined, containerId: string | undefined, homes: Home[], rooms: Room[], containers: Container[], homeId?: string) {
   const room = rooms.find(r => r.id === roomId);
-  if (!room) return '';
+  if (!room) return homeId ? `${homes.find(home => home.id === homeId)?.name ?? '未知家庭'} → 未设置位置` : '';
   const names: string[] = [];
   const visited = new Set<string>();
   let current = containers.find(c => c.id === containerId && c.roomId === roomId);
@@ -118,9 +150,9 @@ export function createInitialData() {
     { id: 'drawer', name: '第二层抽屉', roomId: 'kitchen', parentId: 'cabinet', level: 3, cells: [0, 1, 8, 9] },
   ];
   const items: Item[] = [
-    { id: 'tea', name: '乌龙茶', roomId: 'kitchen', containerId: 'drawer', categoryId: 'drink', cell: 18, expiry: localDate(expiry), reminderDays: 7 },
-    { id: 'bandage', name: '创可贴', roomId: 'bedroom', categoryId: 'medicine', cell: 5, reminderDays: 7 },
+    { id: 'tea', homeId: 'home', name: '乌龙茶', roomId: 'kitchen', containerId: 'drawer', categoryId: 'drink', cell: 18, expiry: localDate(expiry), reminderDays: 7 },
+    { id: 'bandage', homeId: 'home', name: '创可贴', roomId: 'bedroom', categoryId: 'medicine', cell: 5, reminderDays: 7 },
   ];
-  const categories: Category[] = [['food', '食品'], ['drink', '饮品'], ['medicine', '药品'], ['cleaning', '清洁用品'], ['tools', '工具'], ['documents', '文件'], ['other', '其他'], ['uncategorized', '未分类']].map(([id, name]) => ({ id, name, isSystem: id === 'uncategorized' }));
-  return { homes, rooms, containers, items, categories };
+  const categories: Category[] = [[CLOTHING_CATEGORY_ID, '衣物'], ['food', '食品'], ['drink', '饮品'], ['medicine', '药品'], ['cleaning', '清洁用品'], ['tools', '工具'], ['documents', '文件'], ['other', '其他'], ['uncategorized', '未分类']].map(([id, name]) => ({ id, name, isSystem: id === 'uncategorized' || id === CLOTHING_CATEGORY_ID }));
+  return { schemaVersion: 2, homes, rooms, containers, items, categories };
 }
