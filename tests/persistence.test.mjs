@@ -10,7 +10,7 @@ test('wardrobe and custom room layouts survive alongside existing inventory', ()
   snapshot.items.push({ id: 'shirt', homeId: 'home', roomId: 'closet', categoryId: 'clothing', reminderDays: 7, name: '白衬衫', type: '衬衫', color: '白色', season: '四季' });
   const restored = decodeSnapshot(encodeSnapshot(snapshot));
   assert.deepEqual(restored, snapshot);
-  assert.equal(restored.items.length, 3);
+  assert.equal(restored.items.length, snapshot.items.length);
 });
 
 test('encodes and decodes all app collections without losing nested layout data', () => {

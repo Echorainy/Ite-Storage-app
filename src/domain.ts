@@ -36,6 +36,37 @@ export type WardrobeItem = Item & { type: string; color: string; season: string 
 export function wardrobeItems(items: Item[]): WardrobeItem[] {
   return items.filter(item => item.categoryId === CLOTHING_CATEGORY_ID).map(item => ({ ...item, type: item.type || '未设置', color: item.color || '未设置', season: item.season || '未设置' }));
 }
+
+/** The 20 catalog pieces used by the integrated outfit demo. Image values are
+ * serializable asset: URLs and are resolved by the UI asset map. */
+export function createDemoWardrobeItems(homeId = 'home'): Item[] {
+  const rows: Array<[string, string, string, string, string, string]> = [
+    ['neutral-beige-blazer', '米色西装外套', '西装', '米色', 'wool', 'neutral-beige-blazer.png'],
+    ['neutral-dark-trousers', '深灰西裤', '西裤', '灰色', 'wool', 'neutral-dark-trousers.png'],
+    ['neutral-gray-sneakers', '灰色休闲运动鞋', '运动鞋', '灰色', 'mesh', 'neutral-gray-sneakers.png'],
+    ['neutral-white-shirt', '白色衬衫', '衬衫', '白色', '棉', 'neutral-white-shirt.png'],
+    ['street-black-bomber', '黑色飞行夹克', '夹克', '黑色', 'nylon', 'street-black-bomber.png'],
+    ['street-black-mini-skirt', '黑色短裙', '短裙', '黑色', 'polyester', 'street-black-mini-skirt.png'],
+    ['street-cargo-pants', '深灰工装裤', '工装裤', '灰色', '棉', 'street-cargo-pants.png'],
+    ['street-chain-necklace', '链条项链', '项链', '金色', 'metal', 'street-chain-necklace.png'],
+    ['street-chunky-sneakers', '黑色厚底运动鞋', '运动鞋', '黑色', 'leather', 'street-chunky-sneakers.png'],
+    ['street-gray-hoodie', '灰色连帽卫衣', '卫衣', '灰色', '棉', 'street-gray-hoodie.png'],
+    ['street-red-cap', '红色棒球帽', '帽子', '红色', '棉', 'street-red-cap.png'],
+    ['street-white-socks', '白色短袜', '袜子', '白色', '棉', 'street-white-socks.png'],
+    ['sweet-blue-skirt', '浅蓝百褶裙', '百褶裙', '蓝色', 'polyester', 'sweet-blue-skirt.png'],
+    ['sweet-cream-cardigan', '奶油色针织开衫', '针织衫', '米色', '针织', 'sweet-cream-cardigan.png'],
+    ['sweet-cream-dress', '奶油色连衣裙', '连衣裙', '米色', '棉', 'sweet-cream-dress.png'],
+    ['sweet-mary-jane', '黑色玛丽珍鞋', '皮鞋', '黑色', 'leather', 'sweet-mary-jane.png'],
+    ['sweet-pastel-bag', '浅粉色肩背包', '包', '粉色', 'leather', 'sweet-pastel-bag.png'],
+    ['sweet-pearl-hairclip', '珍珠发夹', '首饰', '白色', 'pearl', 'sweet-pearl-hairclip.png'],
+    ['sweet-pink-blouse', '浅粉短袖衬衫', '衬衫', '粉色', '棉', 'sweet-pink-blouse.png'],
+    ['sweet-ribbon-socks', '蝴蝶结短袜', '袜子', '粉色', '棉', 'sweet-ribbon-socks.png'],
+  ];
+  return rows.map(([id, name, type, color, material, file]) => ({
+    id: `demo-${id}`, homeId, name, type, color, material, season: '四季',
+    image: `asset:wardrobe/${file}`, categoryId: CLOTHING_CATEGORY_ID, reminderDays: 7,
+  }));
+}
 export type Category = { id: string; name: string; isSystem: boolean };
 export type Location = { roomId: string; containerId?: string };
 export type LocationTone = 'neutral' | 'room' | 'module' | 'submodule';
@@ -152,6 +183,7 @@ export function createInitialData() {
   const items: Item[] = [
     { id: 'tea', homeId: 'home', name: '乌龙茶', roomId: 'kitchen', containerId: 'drawer', categoryId: 'drink', cell: 18, expiry: localDate(expiry), reminderDays: 7 },
     { id: 'bandage', homeId: 'home', name: '创可贴', roomId: 'bedroom', categoryId: 'medicine', cell: 5, reminderDays: 7 },
+    ...createDemoWardrobeItems('home'),
   ];
   const categories: Category[] = [[CLOTHING_CATEGORY_ID, '衣物'], ['food', '食品'], ['drink', '饮品'], ['medicine', '药品'], ['cleaning', '清洁用品'], ['tools', '工具'], ['documents', '文件'], ['other', '其他'], ['uncategorized', '未分类']].map(([id, name]) => ({ id, name, isSystem: id === 'uncategorized' || id === CLOTHING_CATEGORY_ID }));
   return { schemaVersion: 2, homes, rooms, containers, items, categories };

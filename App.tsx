@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, SafeAreaView, ScrollView, StatusBar, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { CLOTHING_CATEGORY_ID, ClothingDraft, wardrobeItems, Category, Container, Filter, Home, Item, Location, Room, DEFAULT_MODULE_COLOR, MODULE_COLORS, ROOM_LAYOUT_PRESETS, containerDescendants, createInitialData, directChildren, directItems, filterItems, filterLabels, homeItems, isValidHexColor, locationPath, matchesFilter, moduleColorTextColor, normalizeModuleColor, removeContainerContents, removeHomeContents, roomCellCount, validateName } from './src/domain';
+import { CLOTHING_CATEGORY_ID, ClothingDraft, wardrobeItems, Category, Container, Filter, Home, Item, Location, Room, DEFAULT_MODULE_COLOR, MODULE_COLORS, ROOM_LAYOUT_PRESETS, containerDescendants, createDemoWardrobeItems, createInitialData, directChildren, directItems, filterItems, filterLabels, homeItems, isValidHexColor, locationPath, matchesFilter, moduleColorTextColor, normalizeModuleColor, removeContainerContents, removeHomeContents, roomCellCount, validateName } from './src/domain';
 import { occupiedCells, validateCells } from './src/grid-edit';
 import { Button, Chip, Empty, Field, Icon, IconButton, IconName, Sheet, colors, s, useToday } from './src/ui';
 import { HomePage, ItemRows, LayoutPage, RoomLayoutPage, RoomsPage } from './src/pages';
@@ -42,7 +42,15 @@ export default function App() {
   const now = useToday();
   useEffect(() => {
     let active = true;
-    loadSnapshot().then(snapshot => { if (active) { setData(snapshot); setActiveHomeId(current => snapshot.homes.some(home => home.id === current) ? current : snapshot.homes[0].id); setHydrated(true); void rescheduleAllReminders(snapshot.items); } }).catch(() => { if (active) setHydrated(true); });
+    loadSnapshot().then(snapshot => { if (active) {
+      // Seed the integrated catalog into an existing local install exactly once
+      // per stable item id, while preserving all user-created clothes.
+      const existing = new Set(snapshot.items.map(item => item.id));
+      const homeId = snapshot.homes[0]?.id ?? 'home';
+      const demo = createDemoWardrobeItems(homeId).filter(item => !existing.has(item.id));
+      const hydratedSnapshot = demo.length ? { ...snapshot, items: [...snapshot.items, ...demo] } : snapshot;
+      setData(hydratedSnapshot); setActiveHomeId(current => hydratedSnapshot.homes.some(home => home.id === current) ? current : hydratedSnapshot.homes[0].id); setHydrated(true); void rescheduleAllReminders(hydratedSnapshot.items);
+    } }).catch(() => { if (active) setHydrated(true); });
     return () => { active = false; };
   }, []);
   useEffect(() => { if (hydrated) void saveSnapshot(data); }, [data, hydrated]);
