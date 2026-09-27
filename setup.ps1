@@ -9,14 +9,14 @@ function Configure-WardrobeEnv([string]$Backend) {
     if (-not (Test-Path -LiteralPath $example)) { throw "Missing backend environment template: $example" }
 
     $lines = if (Test-Path -LiteralPath $envFile) { @(Get-Content -LiteralPath $envFile) } else { @(Get-Content -LiteralPath $example) }
-    $existing = ($lines | Where-Object { $_ -match '^OPENAI_API_KEY=(.+)$' } | Select-Object -First 1)
-    $hasUsableKey = $existing -and $existing -notmatch 'your_deepseek_api_key_here' -and $existing -notmatch '^OPENAI_API_KEY=$'
+    $existing = ($lines | Where-Object { $_ -match "^OPENAI_API_KEY=(.+)$" } | Select-Object -First 1)
+    $hasUsableKey = $existing -and $existing -notmatch "your_deepseek_api_key_here" -and $existing -notmatch "^OPENAI_API_KEY=$"
     if (-not $hasUsableKey) {
         $secure = Read-Host '请输入 DeepSeek API Key（输入内容不会显示）' -AsSecureString
         $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
         try { $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
         if ([string]::IsNullOrWhiteSpace($key)) { throw 'DeepSeek API Key 不能为空。' }
-        $lines = @($lines | Where-Object { $_ -notmatch '^OPENAI_API_KEY=' })
+        $lines = @($lines | Where-Object { $_ -notmatch "^OPENAI_API_KEY=" })
         $lines = @("OPENAI_API_KEY=$key") + $lines
     } else { Write-Host '检测到已有 DeepSeek API Key，保留现有配置。' }
 
