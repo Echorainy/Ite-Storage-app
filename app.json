@@ -6,6 +6,14 @@
     "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/app-icon.png",
+      "name": "家里放哪儿",
+      "shortName": "家里放哪儿",
+      "themeColor": "#708B72",
+      "backgroundColor": "#F8F3E9"
+    },
     "android": {
       "package": "com.echorainy.homewhereabouts",
       "versionCode": 1
